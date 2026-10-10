@@ -1,0 +1,37 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Upload {
+  id            String   @id
+  fileName      String
+  fileUrl       String
+  status        String   // PENDING, PROCESSING, COMPLETED, FAILED
+  userId        String
+  totalRows     Int?
+  processedRows Int?
+  failedRows    Int?
+  errorMessage  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  activityData  ActivityData[]
+}
+
+model ActivityData {
+  id        String   @id
+  uploadId  String
+  category  String
+  amount    Float
+  unit      String
+  date      DateTime
+  createdAt DateTime @default(now())
+
+  upload Upload @relation(fields: [uploadId], references: [id])
+}

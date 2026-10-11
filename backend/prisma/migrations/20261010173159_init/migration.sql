@@ -1,4 +1,4 @@
--- CreateTable
+
 CREATE TABLE "Upload" (
     "id" TEXT NOT NULL,
     "fileName" TEXT NOT NULL,
@@ -15,7 +15,6 @@ CREATE TABLE "Upload" (
     CONSTRAINT "Upload_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
 CREATE TABLE "ActivityData" (
     "id" TEXT NOT NULL,
     "uploadId" TEXT NOT NULL,

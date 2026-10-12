@@ -17,4 +17,8 @@ export function registerDocumentProcessingRoutes(
   app.get<{ Params: { id: string } }>('/api/v1/uploads/:id', (request, reply) =>
     documentProcessing.getUploadByIdController.handle(request, reply),
   );
+
+  app.get<{ Params: { id: string } }>('/api/v1/uploads/:id/results', (request, reply) =>
+    documentProcessing.getUploadResultsController.handle(request, reply),
+  );
 }

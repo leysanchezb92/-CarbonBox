@@ -2,6 +2,7 @@ import { PrismaClient } from '../generated/prisma/client';
 import { buildApp } from './app';
 import { config } from './config';
 import { DocumentProcessingModule } from './document-processing/infrastructure/dependency-injection/DocumentProcessingModule';
+import { PrismaActivityDataRepository } from './document-processing/infrastructure/persistence/repositories/PrismaActivityDataRepository';
 import { PrismaUploadRepository } from './document-processing/infrastructure/persistence/repositories/PrismaUploadRepository';
 
 async function main(): Promise<void> {
@@ -9,6 +10,7 @@ async function main(): Promise<void> {
 
   const documentProcessing = new DocumentProcessingModule({
     uploadRepository: new PrismaUploadRepository(prisma),
+    activityDataRepository: new PrismaActivityDataRepository(prisma),
     storageDir: config.storageDir,
     defaultUserId: config.defaultUserId,
   });
@@ -16,6 +18,7 @@ async function main(): Promise<void> {
   const app = await buildApp({ documentProcessing, config });
   await app.listen({ port: config.port, host: '0.0.0.0' });
 
+  // Al apagar con Ctrl + C, cerramos ordenadamente el servidor y la base de datos.
   const shutdown = async (): Promise<void> => {
     await app.close();
     await prisma.$disconnect();

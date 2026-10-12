@@ -19,6 +19,13 @@ export interface PaginatedUploads {
   limit: number;
 }
 
+export interface UploadStats {
+  total: number;
+  completed: number;
+  inProgress: number;
+  failed: number;
+}
+
 export interface ActivityRow {
   category: string;
   amount: number;

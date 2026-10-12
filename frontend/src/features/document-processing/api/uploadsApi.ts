@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { API_URL, ApiError, CONNECTION_ERROR_MESSAGE, apiGet, toApiError } from '@/shared/lib/api-client';
+import { apiClient, apiGet } from '@/shared/lib/api-client';
 import {
   isActiveStatus,
   type PaginatedUploads,
+  type UploadStats,
   type Upload,
   type UploadResults,
 } from '../types/upload.types';
@@ -12,6 +13,7 @@ const POLLING_INTERVAL_MS = 3000;
 export const uploadKeys = {
   all: ['uploads'] as const,
   list: (page: number, limit: number) => ['uploads', 'list', page, limit] as const,
+  stats: ['uploads', 'stats'] as const,
   detail: (id: string) => ['uploads', 'detail', id] as const,
   results: (id: string) => ['uploads', 'results', id] as const,
 };
@@ -24,6 +26,14 @@ export function useUploads(page: number, limit: number) {
       const items = query.state.data?.data ?? [];
       return items.some((upload) => isActiveStatus(upload.status)) ? POLLING_INTERVAL_MS : false;
     },
+  });
+}
+
+export function useUploadStats() {
+  return useQuery({
+    queryKey: uploadKeys.stats,
+    queryFn: () => apiGet<UploadStats>('/api/v1/uploads/stats'),
+    refetchInterval: (query) => ((query.state.data?.inProgress ?? 0) > 0 ? POLLING_INTERVAL_MS : false),
   });
 }
 
@@ -46,36 +56,18 @@ export function useUploadResults(id: string, enabled: boolean) {
   });
 }
 
-export function uploadFile(file: File, onProgress?: (percent: number) => void): Promise<Upload> {
-  return new Promise((resolve, reject) => {
-    const form = new FormData();
-    form.append('file', file);
+export async function uploadFile(file: File, onProgress?: (percent: number) => void): Promise<Upload> {
+  const form = new FormData();
+  form.append('file', file);
 
-    const request = new XMLHttpRequest();
-    request.open('POST', `${API_URL}/api/v1/uploads`);
-
-    request.upload.onprogress = (event) => {
-      if (event.lengthComputable && onProgress) {
+  const response = await apiClient.post<Upload>('/api/v1/uploads', form, {
+    onUploadProgress: (event) => {
+      if (event.total && onProgress) {
         onProgress(Math.round((event.loaded / event.total) * 100));
       }
-    };
-    request.onload = () => {
-      let body: unknown = null;
-      try {
-        body = JSON.parse(request.responseText);
-      } catch {
-        body = null;
-      }
-      if (request.status >= 200 && request.status < 300) {
-        resolve(body as Upload);
-      } else {
-        reject(toApiError(request.status, body));
-      }
-    };
-    request.onerror = () => reject(new ApiError(CONNECTION_ERROR_MESSAGE, 0));
-
-    request.send(form);
+    },
   });
+  return response.data;
 }
 
 export function useCreateUpload() {

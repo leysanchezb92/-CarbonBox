@@ -2,10 +2,7 @@
 
 import Link from 'next/link';
 import { LoadingSpinner } from '@/shared/components/LoadingSpinner';
-import { useUploads } from '../api/uploadsApi';
-import { isActiveStatus } from '../types/upload.types';
-
-const SAMPLE_SIZE = 100;
+import { useUploadStats } from '../api/uploadsApi';
 
 function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
   return (
@@ -17,12 +14,7 @@ function StatCard({ label, value, color }: { label: string; value: number; color
 }
 
 export function DashboardSummary() {
-  const { data, isLoading, error } = useUploads(1, SAMPLE_SIZE);
-
-  const uploads = data?.data ?? [];
-  const completed = uploads.filter((upload) => upload.status === 'COMPLETED').length;
-  const inProgress = uploads.filter((upload) => isActiveStatus(upload.status)).length;
-  const failed = uploads.filter((upload) => upload.status === 'FAILED').length;
+  const { data, isLoading, error } = useUploadStats();
 
   return (
     <section>
@@ -37,19 +29,12 @@ export function DashboardSummary() {
       )}
 
       {data && (
-        <>
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-            <StatCard label="Total de uploads" value={data.total} color="text-slate-900" />
-            <StatCard label="Completados" value={completed} color="text-green-700" />
-            <StatCard label="En proceso" value={inProgress} color="text-blue-700" />
-            <StatCard label="Fallidos" value={failed} color="text-red-700" />
-          </div>
-          {data.total > SAMPLE_SIZE && (
-            <p className="mt-3 text-xs text-slate-500">
-              Los contadores por estado consideran los {SAMPLE_SIZE} uploads más recientes.
-            </p>
-          )}
-        </>
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          <StatCard label="Total de uploads" value={data.total} color="text-slate-900" />
+          <StatCard label="Completados" value={data.completed} color="text-green-700" />
+          <StatCard label="En proceso" value={data.inProgress} color="text-blue-700" />
+          <StatCard label="Fallidos" value={data.failed} color="text-red-700" />
+        </div>
       )}
 
       <div className="mt-8 flex gap-3">

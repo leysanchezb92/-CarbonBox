@@ -1,3 +1,5 @@
+import axios, { AxiosError } from 'axios';
+
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 export const CONNECTION_ERROR_MESSAGE =
@@ -14,23 +16,24 @@ export class ApiError extends Error {
   }
 }
 
-/** Convierte la respuesta de error del backend ({ error, message }) en un ApiError. */
-export function toApiError(status: number, body: unknown): ApiError {
-  const parsed = body as { error?: string; message?: string } | null;
-  return new ApiError(parsed?.message ?? `Error ${status} del servidor`, status, parsed?.error);
-}
+export const apiClient = axios.create({ baseURL: API_URL });
+
+// Todo error de red o de la API sale como ApiError, con el { error, message } del backend.
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error: unknown) => {
+    if (!axios.isAxiosError(error)) throw error;
+    const failure: AxiosError<{ error?: string; message?: string }> = error;
+
+    if (failure.response === undefined) {
+      throw new ApiError(CONNECTION_ERROR_MESSAGE, 0);
+    }
+    const { status, data } = failure.response;
+    throw new ApiError(data?.message ?? `Error ${status} del servidor`, status, data?.error);
+  },
+);
 
 export async function apiGet<T>(path: string): Promise<T> {
-  let response: Response;
-  try {
-    response = await fetch(`${API_URL}${path}`);
-  } catch {
-    throw new ApiError(CONNECTION_ERROR_MESSAGE, 0);
-  }
-
-  const body: unknown = await response.json().catch(() => null);
-  if (!response.ok) {
-    throw toApiError(response.status, body);
-  }
-  return body as T;
+  const response = await apiClient.get<T>(path);
+  return response.data;
 }

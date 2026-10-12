@@ -27,11 +27,15 @@ Prácticamente **todo el código lo generó Claude**; mi trabajo fue ejecutarlo,
 - [x] Lectura y validación del CSV
 - [x] Worker de procesamiento
 - [x] Configuración de TypeScript
+- [x] Endpoint `GET /uploads/stats` (query, handler, controlador y conteo con `groupBy`)
+- [x] Tests unitarios con Vitest (parser CSV, `ActivityData`, `FileName`, `Upload`, `FileProcessingService`)
+- [x] `Dockerfile` y servicios `api` y `worker` en `docker-compose.yaml` (perfil `app`)
 
 ### Frontend
 - [x] Setup de Next.js (el comando lo indicó Claude)
 - [x] Páginas y componentes: dashboard, lista, subida y detalle
 - [x] Lógica de React Query y polling
+- [x] Migración de `fetch`/`XMLHttpRequest` a Axios (instancia con interceptor de errores) y Dashboard con los contadores del nuevo endpoint
 - [x] Estilos con Tailwind
 
 ### Documentación

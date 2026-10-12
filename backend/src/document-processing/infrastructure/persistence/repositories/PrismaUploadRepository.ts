@@ -4,6 +4,7 @@ import {
   IUploadRepository,
   ListUploadsParams,
 } from '../../../domain/repositories/IUploadRepository';
+import { UploadStatusValue } from '../../../domain/value-objects/UploadStatus';
 import { PrismaUploadMapper } from '../mappers/PrismaUploadMapper';
 
 export class PrismaUploadRepository implements IUploadRepository {
@@ -38,5 +39,17 @@ export class PrismaUploadRepository implements IUploadRepository {
     ]);
 
     return { items: records.map((record) => PrismaUploadMapper.toDomain(record)), total };
+  }
+
+  async countByStatus(): Promise<Record<UploadStatusValue, number>> {
+    const groups = await this.prisma.upload.groupBy({ by: ['status'], _count: { _all: true } });
+
+    const counts: Record<UploadStatusValue, number> = { PENDING: 0, PROCESSING: 0, COMPLETED: 0, FAILED: 0 };
+    for (const group of groups) {
+      if (group.status in counts) {
+        counts[group.status as UploadStatusValue] = group._count._all;
+      }
+    }
+    return counts;
   }
 }

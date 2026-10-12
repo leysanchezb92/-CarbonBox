@@ -41,6 +41,10 @@ docker compose up -d
 docker compose ps        # debe mostrar postgres en estado "running"
 ```
 
+> **Alternativa con Docker para API y worker:** `docker compose --profile app up --build` levanta
+> PostgreSQL, la API (puerto 3001, aplica las migraciones al arrancar) y el worker. El frontend
+> sigue con `npm run dev`. Si usas esta opción, salta los pasos 2 y 3.
+
 **2. Backend: API (terminal 1)**
 
 ```bash
@@ -85,6 +89,14 @@ curl -F "file=@sample-data.csv" http://localhost:3001/api/v1/uploads
 curl "http://localhost:3001/api/v1/uploads?page=1&limit=10"
 curl http://localhost:3001/api/v1/uploads/<id>
 curl http://localhost:3001/api/v1/uploads/<id>/results
+curl http://localhost:3001/api/v1/uploads/stats
+```
+
+Tests unitarios del backend:
+
+```bash
+cd backend
+npm test
 ```
 
 ## API
@@ -93,6 +105,7 @@ curl http://localhost:3001/api/v1/uploads/<id>/results
 |---|---|---|
 | `POST` | `/api/v1/uploads` | Sube un CSV (`multipart/form-data`, campo `file`). Responde `201` con el upload en `PENDING` |
 | `GET` | `/api/v1/uploads?page=1&limit=10` | Lista paginada: `{ data, total, page, limit }` |
+| `GET` | `/api/v1/uploads/stats` | Contadores para el Dashboard: `{ total, completed, inProgress, failed }` |
 | `GET` | `/api/v1/uploads/:id` | Estado del upload: filas totales, procesadas y con error, mensaje de error |
 | `GET` | `/api/v1/uploads/:id/results` | Datos procesados: `{ data: [{ category, amount, unit, date }] }` |
 | `GET` | `/health` | Comprobación de que el servidor está vivo |
@@ -137,8 +150,8 @@ El diagrama de cómo se desplegaría en AWS está en [`docs/arquitectura-aws.md`
 | **Lector de CSV propio** | Entiende comillas, saltos de línea de Windows y BOM, sin dependencia extra | Carga el archivo completo en memoria |
 | **Inyección de dependencias manual** en lugar de un contenedor (Awilix) | Menos magia y más fácil de seguir | Más código de cableado al crecer |
 | **Polling cada 3 s con React Query** (`refetchInterval`) | Simple y es lo que pide el enunciado; se detiene solo cuando el upload termina | Websockets serían más inmediatos |
-| **`XMLHttpRequest` para subir** | Permite medir el progreso real de la subida (`fetch` no lo permite) | |
-| **`fetch` en lugar de Axios** | Una dependencia menos | |
+| **Axios** con una instancia compartida (`api-client.ts`) | Lo pide el enunciado; un interceptor convierte cualquier fallo en un `ApiError` y `onUploadProgress` da el progreso de la subida | Una dependencia más que `fetch` |
+| **Endpoint `GET /uploads/stats`** (query CQRS propia) | El Dashboard cuenta con `GROUP BY` en la base de datos en vez de sumar una página de uploads en el navegador | Una ruta más que mantener |
 | **Next.js 16 con Tailwind 4** | Es lo que genera hoy `create-next-app`; Tailwind 4 ya no usa `tailwind.config.ts` | Difiere del árbol de archivos del enunciado |
 | **Los puertos viven en `application/`** | Regla de dependencias: la capa de aplicación define lo que necesita | El enunciado ubica `IMessagePublisher` en `shared/infrastructure` |
 
@@ -148,19 +161,20 @@ El diagrama de cómo se desplegaría en AWS está en [`docs/arquitectura-aws.md`
 - **Cola simulada pensada para un solo worker**; sin reintentos con espera creciente. Los mensajes ilegibles o los fallos inesperados se apartan en `storage/queue-dead-letter` (una DLQ básica).
 - **Si falla la publicación del mensaje** después de guardar el upload, este se queda en `PENDING` (solución profesional: patrón *outbox*).
 - **Sin autenticación**: todos los uploads pertenecen a un usuario fijo.
-- **Sin tests automatizados en el repositorio.** El código se verificó con compilación estricta de TypeScript y pruebas manuales; ver `USO-DE-IA.md`.
+- **Tests solo unitarios** (parser CSV, validaciones del dominio, máquina de estados de `Upload`, servicio de procesamiento). No hay tests de integración con base de datos ni tests del frontend.
 - El archivo se lee completo en memoria: no está pensado para CSV de cientos de MB.
-- Los contadores del Dashboard consideran los 100 uploads más recientes.
-- `docker-compose.yaml` solo levanta PostgreSQL (no LocalStack).
+- `docker-compose.yaml` no incluye LocalStack ni el frontend: el frontend se ejecuta con `npm run dev`.
 
 ## Qué haría con más tiempo
 
-SQS y S3 reales con LocalStack; reintentos con espera creciente; patrón outbox; tests unitarios y de integración; autenticación; mostrar los errores por fila en la pantalla; y métricas del worker.
+SQS y S3 reales con LocalStack; reintentos con espera creciente; patrón outbox; tests de integración; autenticación; mostrar los errores por fila en la pantalla; y métricas del worker.
 
 ## Estructura del repositorio
 
 ```
 ├── backend/
+│   ├── Dockerfile                # imagen de la API y del worker
+│   ├── tests/                    # tests unitarios (Vitest)
 │   ├── prisma/                   # schema.prisma y migraciones
 │   └── src/
 │       ├── document-processing/  # domain, application, infrastructure, presentation
@@ -172,7 +186,7 @@ SQS y S3 reales con LocalStack; reintentos con espera creciente; patrón outbox;
 ├── docs/
 │   ├── arquitectura-aws.md       # diagrama AWS (Mermaid)
 │   └── sample-data-con-errores.csv
-├── docker-compose.yaml
+├── docker-compose.yaml          # PostgreSQL (+ API y worker con --profile app)
 ├── sample-data.csv               # 50 filas válidas de ejemplo
 ├── README.md
 └── USO-DE-IA.md

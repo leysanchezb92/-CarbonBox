@@ -2,11 +2,11 @@
 
 ## Herramientas utilizadas
 
-- [ ] Claude Code
+- [x] Claude Code
 - [ ] GitHub Copilot
 - [ ] ChatGPT
 - [ ] Cursor AI
-- [x] Otra: **Claude (Anthropic)**, usado desde la app de chat (no Claude Code)
+- [x] Otra: **Claude (Anthropic)**, **gemini(Google)**, usado desde la app de chat (no Claude Code)
 
 ## Cómo trabajé
 
